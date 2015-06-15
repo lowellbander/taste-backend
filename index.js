@@ -3,6 +3,7 @@ var express = require('express');
 var querystring = require('querystring');
 var cookieParser = require('cookie-parser');
 var cors = require('cors');
+var async = require('async');
 
 var client_id = process.env.CLIENT_ID; // Your client id
 var client_secret = process.env.CLIENT_SECRET; // Your client secret
@@ -13,19 +14,6 @@ app.use(cors());
 
 console.log(client_id);
 console.log(client_secret);
-
-function getTracks() {
-    var url = 'https://api.spotify.com/v1/me/tracks';
-    request(url, function (error, response, body) {
-       if (!error && response.statusCode == 200) {
-           console.log(body);
-       } else {
-           console.error('error!');
-           console.error(response.statusCode);
-           console.error(error);
-       }
-    });
-};
 
 var generateRandomString = function(length) {
     var text = '';
@@ -129,9 +117,18 @@ app.get('/', function (req, res) {
     res.send('welcome to the backend');
 });
 
+function unique (arr) {
+    return arr.filter(function (elem, pos) {
+       return arr.indexOf(elem) == pos;
+    });
+};
+
 function getArtistIds(tracks) {
     var ids = [];
     //console.log(ids.length);
+
+    //console.log(tracks);
+    //return [];
 
     for (i in tracks) {
         var artists = tracks[i].track.artists;
@@ -139,34 +136,62 @@ function getArtistIds(tracks) {
             ids.push(artists[j].id);
         }
     }
-    return ids.slice(-50);
+    console.log(ids.length);
+    ids = unique(ids);
+    console.log(ids.length);
+    return ids;
 };
 
-function getGenres(artists, access_token, callback) {
+function getGenres(artistIds, access_token, callback) {
 
+    //artists = artists.slice(0, 50);
 
     var genres = [];
 
     //max ID's per request is 50
 
+    var url = 'https://api.spotify.com/v1/artists?ids=';
+
     var options = {
-        url: 'https://api.spotify.com/v1/artists?ids=' + artists.join(','),
+        //url: url + artists.join(','),
         headers: { 'Authorization': 'Bearer ' + access_token },
         json: true
     };
 
-    request.get(options, function(error, response, body) {
-        if (error) {
-            console.error('couldn\'t get artists');
-            console.error(error);
-        } else {
-            var artists = body.artists;
-            for (i in artists) {
-                genres = genres.concat(artists[i].genres);
+    function loop (callback) {
+
+        console.log(artistIds.length + ' artistIds remaining');
+        options.url = url + artistIds.slice(0, 50).join(',');
+
+        request.get(options, function(error, response, body) {
+            if (error) {
+                console.error('couldn\'t get artists');
+                console.error(error);
+                return;
+            } else {
+                var artists = body.artists;
+                for (i in artists) {
+                    genres = genres.concat(artists[i].genres);
+                }
+                console.log(genres.length + ' genres gotten');
+
+                artistIds = artistIds.slice(50);
+                if (artistIds.length != 0) loop(callback);
+                else callback();
+
+                //callback(genres);
             }
-            callback(genres);
-        }
+        });
+    }
+
+    loop(function () {
+        console.log('done getting genres');
+        callback(genres);
     });
+
+
+
+
 
 };
 
@@ -191,11 +216,75 @@ function packageForD3 (genres) {
     return bundle;
 };
 
+function getTracks(access_token/*, howMany*/, callback) {
+
+    var tracks = [];
+
+    var options = {
+        url: 'https://api.spotify.com/v1/me/tracks?limit=50',
+        headers: { 'Authorization': 'Bearer ' + access_token },
+        json: true
+    };
+
+
+    function loop (loop_callback) {
+        request.get(options, function(error, response, body) {
+            if (error) {
+                console.error('couldn\'t get tracks');
+                console.error(error);
+                return;
+            }
+            else {
+                tracks = tracks.concat(body.items);
+                console.log(tracks.length + ' tracks gotten');
+                if (options.url = body.next) loop(loop_callback);
+                else loop_callback();
+            }
+        });
+    };
+
+
+    loop(function() {
+        console.log('done getting tracks');
+        callback(tracks);
+    });
+
+    /*async.doWhilst(
+        function (callback) {
+            request.get(options, function(error, response, body) {
+                if (error) {
+                    console.error('couldn\'t get tracks');
+                    console.error(error);
+                }
+                else {
+                    tracks.push(body.items);
+                    next = body.next;
+                    return;
+                }
+            });
+        },
+        function () {return next != null},
+        function ()
+    );*/
+
+};
+
 app.get('/fetch', function (req, res) {
 
     var access_token = req.query.access_token;
 
-    var options = {
+    getTracks(access_token, function (tracks) {
+        var artistIds = getArtistIds(tracks);
+        //console.log(artists.length);
+        getGenres(artistIds, access_token, function (genres) {
+            console.log('writing response');
+            res.writeHead(200, {"Content-Type": "application/json"});
+            res.end(JSON.stringify(packageForD3(genres)));
+        });
+
+    });
+
+    /*var options = {
         url: 'https://api.spotify.com/v1/me/tracks?limit=50',
         headers: { 'Authorization': 'Bearer ' + access_token },
         json: true
@@ -208,7 +297,6 @@ app.get('/fetch', function (req, res) {
         }
         else {
             var artists = getArtistIds(body.items);
-            console.log(artists);
             console.log(artists.length);
             getGenres(artists, access_token, function (genres) {
                 res.writeHead(200, {"Content-Type": "application/json"});
@@ -216,10 +304,9 @@ app.get('/fetch', function (req, res) {
             });
 
         }
-    });
+    });*/
 
 });
-
 
 var port = process.env.PORT || 8080;
 console.log('Listening on port ', port);
