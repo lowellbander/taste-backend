@@ -132,19 +132,46 @@ app.get('/', function (req, res) {
 function getArtistIds(tracks) {
 
     var ids = [];
-    
+
     for (i in tracks) {
         var artists = tracks[i].track.artists;
         for (j in artists) {
             ids.push(artists[j].id);
         }
     }
-    console.log(ids);
+    return ids;
+};
+
+function getGenres(artists, access_token) {
+
+    var genres = [];
+
+    //max ID's per request is 50
+
+    var options = {
+        url: 'https://api.spotify.com/v1/artists?ids=' + artists.join(','),
+        headers: { 'Authorization': 'Bearer ' + access_token },
+        json: true
+    };
+
+    request.get(options, function(error, response, body) {
+        if (error) {
+            console.error('couldn\'t get artists');
+            console.error(error);
+        } else {
+            console.log('here are the artists');
+            console.log(body);
+            var artists = body.artists;
+            for (i in artists) {
+                genres = genres.concat(artists[i].genres);
+            }
+            console.log(genres);
+        }
+    });
 
 };
 
 app.get('/fetch', function (req, res) {
-    // TODO: get the track id's for this user
 
     var access_token = req.query.access_token;
 
@@ -155,11 +182,18 @@ app.get('/fetch', function (req, res) {
     };
 
     request.get(options, function(error, response, body) {
-        //console.log(body);
-        var artists = getArtistIds(body.items);
+        if (error) {
+            console.error('couldn\'t get tracks');
+            console.error(error);
+        }
+        else {
+            var artists = getArtistIds(body.items);
+            console.log(artists);
+            var genres = getGenres(artists, access_token);
+        }
     });
 
-    res.send('that is so fetch');
+    res.send('token: ' + access_token);
 });
 
 //getTracks();
