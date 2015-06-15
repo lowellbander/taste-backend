@@ -112,7 +112,6 @@ app.get('/callback', function(req, res) {
     }
 });
 
-
 app.get('/', function (req, res) {
     res.send('welcome to the backend');
 });
@@ -124,11 +123,8 @@ function unique (arr) {
 };
 
 function getArtistIds(tracks) {
-    var ids = [];
-    //console.log(ids.length);
 
-    //console.log(tracks);
-    //return [];
+    var ids = [];
 
     for (i in tracks) {
         var artists = tracks[i].track.artists;
@@ -144,16 +140,11 @@ function getArtistIds(tracks) {
 
 function getGenres(artistIds, access_token, callback) {
 
-    //artists = artists.slice(0, 50);
-
     var genres = [];
-
-    //max ID's per request is 50
 
     var url = 'https://api.spotify.com/v1/artists?ids=';
 
     var options = {
-        //url: url + artists.join(','),
         headers: { 'Authorization': 'Bearer ' + access_token },
         json: true
     };
@@ -162,6 +153,8 @@ function getGenres(artistIds, access_token, callback) {
 
         console.log(artistIds.length + ' artistIds remaining');
         options.url = url + artistIds.slice(0, 50).join(',');
+
+        //max ID's per request is 50
 
         request.get(options, function(error, response, body) {
             if (error) {
@@ -179,7 +172,6 @@ function getGenres(artistIds, access_token, callback) {
                 if (artistIds.length != 0) loop(callback);
                 else callback();
 
-                //callback(genres);
             }
         });
     }
@@ -188,10 +180,6 @@ function getGenres(artistIds, access_token, callback) {
         console.log('done getting genres');
         callback(genres);
     });
-
-
-
-
 
 };
 
@@ -216,7 +204,7 @@ function packageForD3 (genres) {
     return bundle;
 };
 
-function getTracks(access_token/*, howMany*/, callback) {
+function getTracks(access_token, callback) {
 
     var tracks = [];
 
@@ -225,7 +213,6 @@ function getTracks(access_token/*, howMany*/, callback) {
         headers: { 'Authorization': 'Bearer ' + access_token },
         json: true
     };
-
 
     function loop (loop_callback) {
         request.get(options, function(error, response, body) {
@@ -243,29 +230,10 @@ function getTracks(access_token/*, howMany*/, callback) {
         });
     };
 
-
     loop(function() {
         console.log('done getting tracks');
         callback(tracks);
     });
-
-    /*async.doWhilst(
-        function (callback) {
-            request.get(options, function(error, response, body) {
-                if (error) {
-                    console.error('couldn\'t get tracks');
-                    console.error(error);
-                }
-                else {
-                    tracks.push(body.items);
-                    next = body.next;
-                    return;
-                }
-            });
-        },
-        function () {return next != null},
-        function ()
-    );*/
 
 };
 
@@ -275,7 +243,6 @@ app.get('/fetch', function (req, res) {
 
     getTracks(access_token, function (tracks) {
         var artistIds = getArtistIds(tracks);
-        //console.log(artists.length);
         getGenres(artistIds, access_token, function (genres) {
             console.log('writing response');
             res.writeHead(200, {"Content-Type": "application/json"});
@@ -283,28 +250,6 @@ app.get('/fetch', function (req, res) {
         });
 
     });
-
-    /*var options = {
-        url: 'https://api.spotify.com/v1/me/tracks?limit=50',
-        headers: { 'Authorization': 'Bearer ' + access_token },
-        json: true
-    };
-
-    request.get(options, function(error, response, body) {
-        if (error) {
-            console.error('couldn\'t get tracks');
-            console.error(error);
-        }
-        else {
-            var artists = getArtistIds(body.items);
-            console.log(artists.length);
-            getGenres(artists, access_token, function (genres) {
-                res.writeHead(200, {"Content-Type": "application/json"});
-                res.end(JSON.stringify(packageForD3(genres)));
-            });
-
-        }
-    });*/
 
 });
 
