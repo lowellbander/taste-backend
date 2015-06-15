@@ -2,12 +2,14 @@ var request = require('request');
 var express = require('express');
 var querystring = require('querystring');
 var cookieParser = require('cookie-parser');
+var cors = require('cors');
 
 var client_id = process.env.CLIENT_ID; // Your client id
 var client_secret = process.env.CLIENT_SECRET; // Your client secret
 var redirect_uri = 'http:///localhost:8080/callback'; // Your redirect uri
 
 var app = express();
+app.use(cors());
 
 console.log(client_id);
 console.log(client_secret);
@@ -107,10 +109,10 @@ app.get('/callback', function(req, res) {
                     console.log(body);
                 });
 
-                res.redirect('/#' +
+                res.redirect('http://localhost:5000/#' +
                  querystring.stringify({
                  access_token: access_token,
-                 refresh_token: refresh_token
+                 //refresh_token: refresh_token
                  }));
             } else {
                 res.redirect('/#' +
@@ -125,6 +127,10 @@ app.get('/callback', function(req, res) {
 
 app.get('/', function (req, res) {
     res.send('welcome to the backend');
+});
+
+app.get('/fetch', function (req, res) {
+    res.send('that is so fetch');
 });
 
 //getTracks();
