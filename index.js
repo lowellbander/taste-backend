@@ -49,7 +49,7 @@ app.get('/login', function(req, res) {
     res.cookie(stateKey, state);
 
     // your application requests authorization
-    var scope = 'user-read-private';
+    var scope = 'user-library-read';
     var url = 'https://accounts.spotify.com/authorize?' +
         querystring.stringify({
             response_type: 'code',
@@ -129,7 +129,36 @@ app.get('/', function (req, res) {
     res.send('welcome to the backend');
 });
 
+function getArtistIds(tracks) {
+
+    var ids = [];
+    
+    for (i in tracks) {
+        var artists = tracks[i].track.artists;
+        for (j in artists) {
+            ids.push(artists[j].id);
+        }
+    }
+    console.log(ids);
+
+};
+
 app.get('/fetch', function (req, res) {
+    // TODO: get the track id's for this user
+
+    var access_token = req.query.access_token;
+
+    var options = {
+        url: 'https://api.spotify.com/v1/me/tracks',
+        headers: { 'Authorization': 'Bearer ' + access_token },
+        json: true
+    };
+
+    request.get(options, function(error, response, body) {
+        //console.log(body);
+        var artists = getArtistIds(body.items);
+    });
+
     res.send('that is so fetch');
 });
 
