@@ -130,8 +130,8 @@ app.get('/', function (req, res) {
 });
 
 function getArtistIds(tracks) {
-
     var ids = [];
+    //console.log(ids.length);
 
     for (i in tracks) {
         var artists = tracks[i].track.artists;
@@ -139,10 +139,11 @@ function getArtistIds(tracks) {
             ids.push(artists[j].id);
         }
     }
-    return ids;
+    return ids.slice(-50);
 };
 
 function getGenres(artists, access_token, callback) {
+
 
     var genres = [];
 
@@ -159,7 +160,6 @@ function getGenres(artists, access_token, callback) {
             console.error('couldn\'t get artists');
             console.error(error);
         } else {
-            //console.log(body);
             var artists = body.artists;
             for (i in artists) {
                 genres = genres.concat(artists[i].genres);
@@ -171,7 +171,6 @@ function getGenres(artists, access_token, callback) {
 };
 
 function packageForD3 (genres) {
-    console.log('packaging');
     var dict = {};
     for (i in genres) {
         if (genres[i] in dict) {
@@ -197,7 +196,7 @@ app.get('/fetch', function (req, res) {
     var access_token = req.query.access_token;
 
     var options = {
-        url: 'https://api.spotify.com/v1/me/tracks',
+        url: 'https://api.spotify.com/v1/me/tracks?limit=50',
         headers: { 'Authorization': 'Bearer ' + access_token },
         json: true
     };
@@ -209,7 +208,8 @@ app.get('/fetch', function (req, res) {
         }
         else {
             var artists = getArtistIds(body.items);
-            //console.log(artists);
+            console.log(artists);
+            console.log(artists.length);
             getGenres(artists, access_token, function (genres) {
                 res.writeHead(200, {"Content-Type": "application/json"});
                 res.end(JSON.stringify(packageForD3(genres)));
