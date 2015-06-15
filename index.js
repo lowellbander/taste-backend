@@ -142,7 +142,7 @@ function getArtistIds(tracks) {
     return ids;
 };
 
-function getGenres(artists, access_token) {
+function getGenres(artists, access_token, callback) {
 
     var genres = [];
 
@@ -159,16 +159,37 @@ function getGenres(artists, access_token) {
             console.error('couldn\'t get artists');
             console.error(error);
         } else {
-            console.log('here are the artists');
-            console.log(body);
+            //console.log(body);
             var artists = body.artists;
             for (i in artists) {
                 genres = genres.concat(artists[i].genres);
             }
-            console.log(genres);
+            callback(genres);
         }
     });
 
+};
+
+function packageForD3 (genres) {
+    console.log('packaging');
+    var dict = {};
+    for (i in genres) {
+        if (genres[i] in dict) {
+            ++dict[genres[i]];
+        } else {
+            dict[genres[i]] = 1;
+        }
+    }
+
+    var children = [];
+
+    for (key in dict) {
+        children.push({"name": key, "size": dict[key]});
+    }
+
+    var bundle = {"name": "flare", children: children};
+    console.log(bundle);
+    return bundle;
 };
 
 app.get('/fetch', function (req, res) {
@@ -188,15 +209,17 @@ app.get('/fetch', function (req, res) {
         }
         else {
             var artists = getArtistIds(body.items);
-            console.log(artists);
-            var genres = getGenres(artists, access_token);
+            //console.log(artists);
+            getGenres(artists, access_token, function (genres) {
+                res.writeHead(200, {"Content-Type": "application/json"});
+                res.end(JSON.stringify(packageForD3(genres)));
+            });
+
         }
     });
 
-    res.send('token: ' + access_token);
 });
 
-//getTracks();
 
 var port = process.env.PORT || 8080;
 console.log('Listening on port ', port);
